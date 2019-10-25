@@ -25,7 +25,6 @@ class EntryModalHelper {
      * 오브젝트 추가 팝업을 노출한다
      */
     static async showSpritePopup() {
-        console.log('object popup show');
         await this._switchPopup('sprite', {
             fetch: (data: any) => {
                 DatabaseManager
@@ -41,7 +40,7 @@ class EntryModalHelper {
                         EntryModalHelper.fetchPopup(result);
                     });
             },
-            submit: async(data: any) => {
+            submit: async (data: any) => {
                 const newObjects = await IpcRendererHelper.importObjectsFromResource(data.selected);
                 newObjects.forEach((item) => {
                     const labeledItem = EntryModalHelper._getLabeledObject(item);
@@ -89,7 +88,6 @@ class EntryModalHelper {
                 Entry.playground.changeViewMode('picture');
             },
             write: (data: any) => {
-                console.log('popupWrite', data);
                 let linebreak = true;
                 if (data.writeType === 'one') {
                     linebreak = false;
@@ -115,7 +113,7 @@ class EntryModalHelper {
                 };
                 Entry.container.addObject(object, 0);
             },
-            dummyUploads: async({ formData, objectData }: { formData: any, objectData: any }) => {
+            dummyUploads: async ({ formData, objectData }: { formData: any, objectData: any }) => {
                 const pictures = formData ? formData.values() : [];
                 const objects = objectData ? objectData.values() : [];
 
@@ -155,7 +153,7 @@ class EntryModalHelper {
                                         objectType: firstObject.objectType,
                                         options: firstObject.entity || {},
                                         _id: Entry.generateHash(),
-                                        fileurl: 'renderer/resources/images/popup/text_icon.png',
+                                        fileurl: 'renderer/resources/images/workspace/text_icon_ko.svg',
                                     };
                                 }
 
@@ -213,7 +211,7 @@ class EntryModalHelper {
                     })
                     .then(EntryModalHelper.fetchPopup);
             },
-            submit: async(data: any) => {
+            submit: async (data: any) => {
                 const pictures = await IpcRendererHelper.importPicturesFromResource(data.selected);
                 pictures.forEach((object) => {
                     const labeledObject = EntryModalHelper._getLabeledObject(object);
@@ -239,7 +237,6 @@ class EntryModalHelper {
                 Entry.playground.addPicture(item, true);
             },
             write: (data: any) => {
-                console.log('popupWrite', data);
                 let linebreak = true;
                 if (data.writeType === 'one') {
                     linebreak = false;
@@ -265,7 +262,7 @@ class EntryModalHelper {
                 };
                 Entry.container.addObject(object, 0);
             },
-            dummyUploads: async({ formData }: { formData: any }) => {
+            dummyUploads: async ({ formData }: { formData: any }) => {
                 const files = formData ? formData.values() : []; // keyName : ...uploadFile${idx}
 
                 try {
@@ -335,7 +332,7 @@ class EntryModalHelper {
                         EntryUtils.loadSound(result as any[]);
                     });
             },
-            submit: async(data: any) => {
+            submit: async (data: any) => {
                 const sounds = await IpcRendererHelper.importSoundsFromResource(data.selected);
                 sounds.forEach((item) => {
                     const labeledItem = EntryModalHelper._getLabeledObject(item);
@@ -360,7 +357,7 @@ class EntryModalHelper {
             itemon: (data: any) => {
                 root.createjs.Sound.play(data.id);
             },
-            dummyUploads: async({ formData }: { formData: any }) => {
+            dummyUploads: async ({ formData }: { formData: any }) => {
                 const files = formData ? formData.values() : []; // keyName : ...uploadFile${idx}
 
                 try {
@@ -461,7 +458,7 @@ class EntryModalHelper {
                     Entry.dispatchEvent('pictureImport', item);
                 }
             },
-            dummyUploads: async({ formData }: { formData: any }) => {
+            dummyUploads: async ({ formData }: { formData: any }) => {
                 const files = formData ? formData.values() : []; // keyName : ...uploadFile${idx}
 
                 try {
@@ -518,7 +515,7 @@ class EntryModalHelper {
      * @return popup 자신을 반환한다. 내부 콜백에서 자신을 사용해야 하는 경우 활용가능하다.
      */
     static async _switchPopup(type: any, events: any = {}, data: any = []) {
-        this.loadPopup(type, data);
+        this.loadPopup(data);
         const popup = EntryModalHelper.popup;
         if (this.lastOpenedType === type && data.length === 0) {
             const initialData = await DatabaseManager.findAll({
@@ -550,11 +547,10 @@ class EntryModalHelper {
     /**
      * 팝업을 로드한다. 두번째부터는 기존 팝업을 그대로 사용한다.
      *
-     * @param {!string} type
      * @param {?Object} data
      * @return {Object} popup
      */
-    static loadPopup = (type: string, data: any) => {
+    static loadPopup = (data: any) => {
         if (!EntryModalHelper.popup) {
             const targetDiv = document.createElement('div');
             document.body.appendChild(targetDiv);
@@ -571,6 +567,8 @@ class EntryModalHelper {
                 type: 'popup',
                 props: { baseUrl: './renderer/resources' },
             });
+        } else {
+            EntryModalHelper.popup.setData({ data: { data } });
         }
     };
 
@@ -610,11 +608,10 @@ class EntryModalHelper {
                         //TODO 추출중입니다 이런 ModalProgress 문구가 있으면 더 좋을것 같음.
                         IpcRendererHelper.downloadExcel(name, data)
                             .then(() => {
-                                root.entrylms.alert('엑셀 추출에 성공했습니다.');
+                                console.log('excel download completed');
                             })
                             .catch((err) => {
                                 console.error(err);
-                                root.entrylms.alert('엑셀 추출에 실패했습니다.');
                             });
                         break;
                     default:

@@ -65,7 +65,6 @@ class Workspace extends Component<IProps> {
             try {
                 const project = await EntryUtils.getSavedProject();
                 await this.loadProject(project);
-                this.isFirstRender = false;
             } catch (e) {
                 this.showModalProgress(
                     'error',
@@ -75,6 +74,12 @@ class Workspace extends Component<IProps> {
                 await this.loadProject();
             }
         }, 0);
+    }
+
+    componentDidUpdate(prevProps: Readonly<IProps>): void {
+        if (prevProps.common.projectName && prevProps.common.projectName !== this.props.common.projectName) {
+            this.handleStorageProjectSave();
+        }
     }
 
     addMainProcessEvents() {
@@ -89,7 +94,6 @@ class Workspace extends Component<IProps> {
                 await this.loadProject(project);
             } catch (e) {
                 console.log('error occurred, ', e);
-                alert('asdfasdf');
             } finally {
                 this.hideModalProgress();
             }
@@ -105,8 +109,8 @@ class Workspace extends Component<IProps> {
         // 교과형에서 하드웨어가 바뀔때 마다 카테고리 변화
         addEventListener('hwChanged', this.handleHardwareChange);
         // 하드웨어 다운로드 탭에서 다운로드 처리
-        addEventListener('newWorkspace', () => {
-            this.handleFileAction('new');
+        addEventListener('newWorkspace', async () => {
+            await this.handleFileAction('new');
         });
         addEventListener('loadWorkspace', () => {
             this.handleFileAction('open_offline');
@@ -200,7 +204,7 @@ class Workspace extends Component<IProps> {
         }
     }
 
-    handleStorageProjectSave = _debounce((isImmediate, option = {}) => {
+    handleStorageProjectSave = _debounce((option = {}) => {
         const { engine } = Entry;
         if (engine && engine.isState('run')) {
             return;
@@ -381,23 +385,39 @@ class Workspace extends Component<IProps> {
 
         // 현재 WS mode 와 이후 변경될 모드가 다른 경우
         if (currentWorkspaceMode !== projectWorkspaceMode) {
-            if (projectWorkspaceMode === 'practical_course') {
-                await ImportToggleHelper.changeEntryStatic('practical_course');
-                PersistActions.changeWorkspaceMode('practical_course');
-            } else {
-                await ImportToggleHelper.changeEntryStatic('workspace');
-                PersistActions.changeWorkspaceMode('workspace');
-            }
+            await ImportToggleHelper.changeEntryStatic(projectWorkspaceMode);
+            PersistActions.changeWorkspaceMode(projectWorkspaceMode);
         }
 
         if (!this.isFirstRender) {
+            Entry.clearProject();
             Entry.disposeContainer();
-            Entry.reloadBlock();
+            // zoom 스케일이 변경된 상태에서 new project 한 경우 블록메뉴에 스케일정보가 남아서 초기화
+            Entry.getMainWS().setScale(1);
         }
+        Entry.reloadBlock();
+        this.isFirstRender = false;
         Entry.init(this.container.current, this.initOption);
         entryPatch();
         this.addEntryEvents();
         Entry.loadProject(project);
+
+        /*
+        Single Page 동작을 하기 때문에 발생하는 이슈
+        함수 창을 열어두면 해당 함수 편집 스테이지로 바인딩 되고,
+        new 프로젝트를 한다 하더라도 Entry 는 이 데이터를 계속 들고있는다.
+        그래서 강제로 신규 로드시 이전 프로젝트가 함수편집 모드였는지 체크하고,
+        함수용 블록을 추가, 메뉴 업데이트를 하는 동작이다.
+
+        @TODO Entry 의 loadProject 혹은 destroy 개선을 위해 로직을 코어로 이전한다.
+        @since 20190905
+        @author extracold1209
+         */
+        if (Entry.Func.isEdit) {
+            Entry.Func.endEdit();
+            Entry.Func.setupMenuCode();
+            Entry.Func.updateMenu();
+        }
     };
 
     reloadProject = async () => {
